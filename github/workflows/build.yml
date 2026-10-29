@@ -1,0 +1,369 @@
+name: Build Franco Keyboard
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Generate project files
+        run: |
+          mkdir -p src/main/java/com/franco/keyboard src/main/res/xml
+
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "FrancoKeyboard"
+          EOF
+
+          cat > build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application") version "8.5.2"
+              id("org.jetbrains.kotlin.android") version "1.9.24"
+          }
+
+          android {
+              namespace = "com.franco.keyboard"
+              compileSdk = 34
+
+              defaultConfig {
+                  applicationId = "com.franco.keyboard"
+                  minSdk = 24
+                  targetSdk = 34
+                  versionCode = 1
+                  versionName = "1.0"
+              }
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          EOF
+
+          cat > src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="كيبورد فرانكو"
+                  android:allowBackup="false">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <service
+                      android:name=".FrancoIME"
+                      android:label="كيبورد فرانكو"
+                      android:permission="android.permission.BIND_INPUT_METHOD"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.view.InputMethod" />
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.view.im"
+                          android:resource="@xml/method" />
+                  </service>
+              </application>
+          </manifest>
+          EOF
+
+          cat > src/main/res/xml/method.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <input-method xmlns:android="http://schemas.android.com/apk/res/android" />
+          EOF
+
+          cat > src/main/java/com/franco/keyboard/MainActivity.kt <<'EOF'
+          package com.franco.keyboard
+
+          import android.app.Activity
+          import android.content.Intent
+          import android.os.Bundle
+          import android.provider.Settings
+          import android.view.inputmethod.InputMethodManager
+          import android.widget.Button
+          import android.widget.LinearLayout
+          import android.widget.TextView
+
+          class MainActivity : Activity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  val pad = (24 * resources.displayMetrics.density).toInt()
+
+                  val root = LinearLayout(this)
+                  root.orientation = LinearLayout.VERTICAL
+                  root.setPadding(pad, pad, pad, pad)
+
+                  val info = TextView(this)
+                  info.textSize = 18f
+                  info.text = "كيبورد فرانكو\n\nاكتب بالعربي والكيبورد يطلّعها فرانكو على طول.\n\nالخطوات:\n1) فعّل الكيبورد من الزرار الأول\n2) اختاره من الزرار التاني (أو من أيقونة الكيبورد وانت بتكتب)"
+                  root.addView(info)
+
+                  val b1 = Button(this)
+                  b1.text = "1) فعّل الكيبورد"
+                  b1.setOnClickListener {
+                      startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+                  }
+                  root.addView(b1)
+
+                  val b2 = Button(this)
+                  b2.text = "2) اختار الكيبورد"
+                  b2.setOnClickListener {
+                      val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                      imm.showInputMethodPicker()
+                  }
+                  root.addView(b2)
+
+                  setContentView(root)
+              }
+          }
+          EOF
+
+          cat > src/main/java/com/franco/keyboard/FrancoIME.kt <<'EOF'
+          package com.franco.keyboard
+
+          import android.graphics.Color
+          import android.graphics.drawable.GradientDrawable
+          import android.inputmethodservice.InputMethodService
+          import android.os.Handler
+          import android.os.Looper
+          import android.util.TypedValue
+          import android.view.KeyEvent
+          import android.view.MotionEvent
+          import android.view.View
+          import android.view.ViewGroup
+          import android.view.inputmethod.EditorInfo
+          import android.view.inputmethod.InputMethodManager
+          import android.widget.Button
+          import android.widget.LinearLayout
+
+          class FrancoIME : InputMethodService() {
+
+              private var francoOn = true
+              private val handler = Handler(Looper.getMainLooper())
+              private var toggleKey: Button? = null
+
+              // جدول التحويل: عدّل فيه زي ما تحب
+              private val franco: Map<Char, String> = mapOf(
+                  'ا' to "a", 'أ' to "a", 'إ' to "e", 'آ' to "a",
+                  'ء' to "2", 'ؤ' to "2", 'ئ' to "2",
+                  'ب' to "b", 'ت' to "t", 'ث' to "s", 'ج' to "g",
+                  'ح' to "7", 'خ' to "5", 'د' to "d", 'ذ' to "z",
+                  'ر' to "r", 'ز' to "z", 'س' to "s", 'ش' to "sh",
+                  'ص' to "9", 'ض' to "d", 'ط' to "6", 'ظ' to "6",
+                  'ع' to "3", 'غ' to "8", 'ف' to "f", 'ق' to "2",
+                  'ك' to "k", 'ل' to "l", 'م' to "m", 'ن' to "n",
+                  'ه' to "h", 'و' to "w", 'ي' to "y", 'ى' to "a",
+                  'ة' to "a"
+              )
+
+              private val repeatDelete = object : Runnable {
+                  override fun run() {
+                      doDelete()
+                      handler.postDelayed(this, 60)
+                  }
+              }
+
+              private fun dp(v: Int): Int =
+                  TypedValue.applyDimension(
+                      TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics
+                  ).toInt()
+
+              override fun onCreateInputView(): View {
+                  val root = LinearLayout(this)
+                  root.orientation = LinearLayout.VERTICAL
+                  root.layoutDirection = View.LAYOUT_DIRECTION_LTR
+                  root.setBackgroundColor(Color.parseColor("#1B1B1F"))
+                  root.setPadding(dp(3), dp(4), dp(3), dp(6))
+
+                  // صف الأرقام
+                  val numbers = newRow()
+                  for (ch in "1234567890") {
+                      numbers.addView(makeKey(ch.toString(), 1f) { commit(ch.toString()) })
+                  }
+                  root.addView(numbers)
+
+                  // صفوف الحروف (الترتيب من الشمال لليمين زي جبورد)
+                  val rows = listOf(
+                      "ضصثقفغعهخحج",
+                      "شسيبلاتنمكط",
+                      "ذءؤرىةوزظد"
+                  )
+                  for ((index, letters) in rows.withIndex()) {
+                      val r = newRow()
+                      for (ch in letters) {
+                          r.addView(makeKey(ch.toString(), 1f) { typeLetter(ch) })
+                      }
+                      if (index == 2) {
+                          val del = makeKey("⌫", 1.5f, "#55555F") { }
+                          del.setOnTouchListener { _, event ->
+                              when (event.action) {
+                                  MotionEvent.ACTION_DOWN -> {
+                                      doDelete()
+                                      handler.postDelayed(repeatDelete, 400)
+                                  }
+                                  MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                      handler.removeCallbacks(repeatDelete)
+                                  }
+                              }
+                              true
+                          }
+                          r.addView(del)
+                      }
+                      root.addView(r)
+                  }
+
+                  // الصف الأخير
+                  val bottom = newRow()
+                  val toggle = makeKey("", 1.6f) { toggleFranco() }
+                  toggleKey = toggle
+                  refreshToggle()
+                  bottom.addView(toggle)
+                  bottom.addView(makeKey("🌐", 1f, "#55555F") {
+                      val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                      imm.showInputMethodPicker()
+                  })
+                  bottom.addView(makeKey("،", 1f) { commit("،") })
+                  bottom.addView(makeKey("مسافة", 4f) { commit(" ") })
+                  bottom.addView(makeKey(".", 1f) { commit(".") })
+                  bottom.addView(makeKey("⏎", 1.5f, "#3F51B5") { doEnter() })
+                  root.addView(bottom)
+
+                  return root
+              }
+
+              private fun newRow(): LinearLayout {
+                  val r = LinearLayout(this)
+                  r.orientation = LinearLayout.HORIZONTAL
+                  r.layoutDirection = View.LAYOUT_DIRECTION_LTR
+                  r.layoutParams = LinearLayout.LayoutParams(
+                      ViewGroup.LayoutParams.MATCH_PARENT,
+                      ViewGroup.LayoutParams.WRAP_CONTENT
+                  )
+                  return r
+              }
+
+              private fun makeKey(
+                  label: String,
+                  weight: Float,
+                  color: String = "#3C3C45",
+                  onClick: (View) -> Unit
+              ): Button {
+                  val b = Button(this)
+                  b.text = label
+                  b.isAllCaps = false
+                  b.setTextColor(Color.WHITE)
+                  b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                  b.setPadding(0, 0, 0, 0)
+                  b.minWidth = 0
+                  b.minHeight = 0
+                  b.minimumWidth = 0
+                  b.minimumHeight = 0
+                  val bg = GradientDrawable()
+                  bg.cornerRadius = dp(8).toFloat()
+                  bg.setColor(Color.parseColor(color))
+                  b.background = bg
+                  val lp = LinearLayout.LayoutParams(0, dp(48), weight)
+                  lp.setMargins(dp(2), dp(3), dp(2), dp(3))
+                  b.layoutParams = lp
+                  b.setOnClickListener { v -> onClick(v) }
+                  return b
+              }
+
+              private fun commit(text: String) {
+                  currentInputConnection?.commitText(text, 1)
+              }
+
+              private fun typeLetter(ch: Char) {
+                  val out = if (francoOn) (franco[ch] ?: ch.toString()) else ch.toString()
+                  commit(out)
+              }
+
+              private fun toggleFranco() {
+                  francoOn = !francoOn
+                  refreshToggle()
+              }
+
+              private fun refreshToggle() {
+                  val b = toggleKey ?: return
+                  b.text = if (francoOn) "فرانكو ✓" else "عربي"
+                  val bg = GradientDrawable()
+                  bg.cornerRadius = dp(8).toFloat()
+                  bg.setColor(Color.parseColor(if (francoOn) "#2E7D32" else "#55555F"))
+                  b.background = bg
+              }
+
+              private fun doDelete() {
+                  val ic = currentInputConnection ?: return
+                  val selected = ic.getSelectedText(0)
+                  if (selected != null && selected.isNotEmpty()) {
+                      ic.commitText("", 1)
+                  } else {
+                      ic.deleteSurroundingText(1, 0)
+                  }
+              }
+
+              private fun doEnter() {
+                  val ic = currentInputConnection ?: return
+                  val options = currentInputEditorInfo?.imeOptions ?: 0
+                  val action = options and EditorInfo.IME_MASK_ACTION
+                  val noEnterAction = (options and EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0
+                  if (!noEnterAction &&
+                      action != EditorInfo.IME_ACTION_NONE &&
+                      action != EditorInfo.IME_ACTION_UNSPECIFIED
+                  ) {
+                      ic.performEditorAction(action)
+                  } else {
+                      sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
+                  }
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Publish APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/outputs/apk/debug/*-debug.apk franco-keyboard.apk
+          gh release create "v${{ github.run_number }}" franco-keyboard.apk \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Franco Keyboard ${{ github.run_number }}" \
+            --notes "ملف APK جاهز للتثبيت"
