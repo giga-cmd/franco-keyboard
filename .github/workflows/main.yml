@@ -11,6 +11,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -22,7 +24,7 @@ jobs:
 
       - name: Generate project files
         run: |
-          mkdir -p src/main/java/com/franco/keyboard src/main/res/xml
+          mkdir -p src/main/java/com/franco/keyboard src/main/res/xml src/main/assets
 
           cat > settings.gradle.kts <<'EOF'
           pluginManagement {
@@ -107,6 +109,227 @@ jobs:
           <input-method xmlns:android="http://schemas.android.com/apk/res/android" />
           EOF
 
+          cat > src/main/assets/words_default.txt <<'EOF'
+          # كلمة=كتابتها بالإنجليزي
+          غفار=Ghaffar
+          عبدالغفار=Abdelghaffar
+          محمد=Mohamed
+          احمد=Ahmed
+          محمود=Mahmoud
+          مصطفى=Mostafa
+          علي=Ali
+          عمر=Omar
+          عمرو=Amr
+          خالد=Khaled
+          يوسف=Youssef
+          ابراهيم=Ibrahim
+          اسماعيل=Ismail
+          حسن=Hassan
+          حسين=Hussein
+          حسام=Hossam
+          هشام=Hisham
+          كريم=Karim
+          طارق=Tarek
+          زياد=Ziad
+          ياسر=Yasser
+          ياسين=Yassin
+          سعيد=Saeed
+          سعد=Saad
+          سامي=Sami
+          سمير=Samir
+          سيف=Seif
+          شريف=Sherif
+          عادل=Adel
+          عبدالله=Abdullah
+          عبدالرحمن=Abdelrahman
+          عبدالعزيز=Abdelaziz
+          عبدالحميد=Abdelhamid
+          عصام=Essam
+          عماد=Emad
+          عمار=Ammar
+          فادي=Fady
+          فارس=Fares
+          فيصل=Faisal
+          قاسم=Qasim
+          ماجد=Maged
+          مازن=Mazen
+          مالك=Malek
+          مروان=Marwan
+          مهند=Mohannad
+          مؤمن=Moamen
+          نادر=Nader
+          ناصر=Nasser
+          نبيل=Nabil
+          هاني=Hany
+          وليد=Waleed
+          يحيى=Yahya
+          امير=Amir
+          ايمن=Ayman
+          اسامة=Osama
+          اسلام=Islam
+          باسم=Basem
+          بلال=Bilal
+          جمال=Gamal
+          جلال=Galal
+          حمزة=Hamza
+          خليل=Khalil
+          رامي=Ramy
+          رضا=Reda
+          رمضان=Ramadan
+          زكريا=Zakaria
+          سلمان=Salman
+          سليم=Salim
+          صلاح=Salah
+          طه=Taha
+          عثمان=Othman
+          عدنان=Adnan
+          غازي=Ghazi
+          غانم=Ghanem
+          فؤاد=Fouad
+          كمال=Kamal
+          منير=Mounir
+          منصور=Mansour
+          موسى=Moussa
+          نور=Nour
+          هيثم=Haitham
+          وائل=Wael
+          فاطمة=Fatma
+          مريم=Mariam
+          سارة=Sara
+          ندى=Nada
+          هدى=Hoda
+          هبة=Heba
+          منى=Mona
+          دينا=Dina
+          رنا=Rana
+          ريم=Reem
+          ليلى=Laila
+          سلمى=Salma
+          يارا=Yara
+          جنى=Jana
+          لينا=Lina
+          خديجة=Khadija
+          عائشة=Aisha
+          زينب=Zeinab
+          اسماء=Asmaa
+          نهى=Noha
+          شيماء=Shaimaa
+          ايمان=Eman
+          رحمة=Rahma
+          ملك=Malak
+          جميلة=Gamila
+          مرحبا=Marhaba
+          اهلا=Ahlan
+          شكرا=shokran
+          الله=Allah
+          والله=Wallah
+          انا=ana
+          انت=enta
+          ايه=eh
+          ازيك=ezayak
+          تمام=tamam
+          حبيبي=7abibi
+          ايوه=aywa
+          لا=la
+          يا=ya
+          ده=da
+          دي=di
+          دا=da
+          ازاي=ezay
+          ليه=leh
+          فين=fen
+          امتى=emta
+          مين=meen
+          كده=keda
+          كدا=keda
+          مش=mesh
+          اه=aa
+          ايوا=aywa
+          حلو=7elw
+          حلوة=7elwa
+          كويس=kwayes
+          وحش=w7esh
+          عايز=3ayez
+          عايزة=3ayza
+          عاوز=3awez
+          عاوزة=3awza
+          عارف=3aref
+          بحبك=ba7ebak
+          بحبكم=Ba7ebkom
+          حبيبتي=7abibti
+          ياعم=ya3am
+          يسطا=ysta
+          صاحبي=sa7bi
+          صاحب=sa7eb
+          اخويا=a5oya
+          اخي=a5i
+          خلاص=5alas
+          طيب=tayeb
+          ماشي=mashi
+          يلا=yalla
+          بس=bas
+          بقى=ba2a
+          اوي=awy
+          قوي=2awy
+          جدا=gedan
+          عفوا=3afwan
+          من=men
+          في=fi
+          عن=3an
+          مع=ma3
+          ان=en
+          او=aw
+          هو=howa
+          هي=heya
+          احنا=e7na
+          انتي=enti
+          انتو=entu
+          هما=homma
+          لو=law
+          لما=lamma
+          عشان=3ashan
+          علشان=3ashan
+          بتاع=beta3
+          بتاعي=beta3i
+          دلوقتي=delwa2ty
+          النهارده=elnaharda
+          بكرة=bokra
+          امبارح=embare7
+          كل=kol
+          كله=kolo
+          حاجة=7aga
+          شوية=shwaya
+          تعالى=ta3ala
+          تعال=ta3al
+          استنى=estanna
+          استني=estanna
+          ثانية=thanya
+          ممتاز=momtaz
+          جامد=gamed
+          لاعب=la3eb
+          سلام=salam
+          السلام=elsalam
+          عليكم=3alaykom
+          ورحمة=wara7mat
+          وبركاته=wabarakatoh
+          صباح=sabah
+          الخير=el5eer
+          مساء=masaa
+          النور=elnoor
+          نورت=nawart
+          معلش=ma3lesh
+          ربنا=rabbena
+          شاء=shaa2
+          اوكي=okay
+          باي=bye
+          هاي=hi
+          يابني=yabny
+          ياصاحبي=yasa7bi
+          EOF
+                    if [ -f words.txt ]; then
+            cp words.txt src/main/assets/words_user.txt
+          fi
+
           cat > src/main/java/com/franco/keyboard/MainActivity.kt <<'EOF'
           package com.franco.keyboard
 
@@ -167,6 +390,7 @@ jobs:
           import android.view.View
           import android.view.ViewGroup
           import android.view.inputmethod.EditorInfo
+          import android.view.inputmethod.InputConnection
           import android.view.inputmethod.InputMethodManager
           import android.widget.Button
           import android.widget.LinearLayout
@@ -177,18 +401,28 @@ jobs:
               private val handler = Handler(Looper.getMainLooper())
               private var toggleKey: Button? = null
 
-              // جدول التحويل: عدّل فيه زي ما تحب
-              private val franco: Map<Char, String> = mapOf(
-                  'ا' to "a", 'أ' to "a", 'إ' to "e", 'آ' to "a",
-                  'ء' to "2", 'ؤ' to "2", 'ئ' to "2",
-                  'ب' to "b", 'ت' to "t", 'ث' to "s", 'ج' to "g",
+              // الكلمة الحالية: بالعربي وبالإنجليزي اللي اتكتب لحد دلوقتي
+              private val wordAr = StringBuilder()
+              private var wordFr = ""
+
+              // قاموس الكلمات والأسماء
+              private val dict = HashMap<String, String>()
+
+              // حروف الفرانكو للكلمات اللي مش في القاموس (عدّل فيها زي ما تحب)
+              private val consonants: Map<Char, String> = mapOf(
+                  'ب' to "b", 'ت' to "t", 'ث' to "th", 'ج' to "g",
                   'ح' to "7", 'خ' to "5", 'د' to "d", 'ذ' to "z",
                   'ر' to "r", 'ز' to "z", 'س' to "s", 'ش' to "sh",
-                  'ص' to "9", 'ض' to "d", 'ط' to "6", 'ظ' to "6",
-                  'ع' to "3", 'غ' to "8", 'ف' to "f", 'ق' to "2",
+                  'ص' to "9", 'ض' to "d", 'ط' to "6", 'ظ' to "z",
+                  'ع' to "3", 'غ' to "gh", 'ف' to "f", 'ق' to "2",
                   'ك' to "k", 'ل' to "l", 'م' to "m", 'ن' to "n",
-                  'ه' to "h", 'و' to "w", 'ي' to "y", 'ى' to "a",
-                  'ة' to "a"
+                  'ه' to "h", 'ء' to "2", 'ؤ' to "2", 'ئ' to "2"
+              )
+
+              // نهايات الكلمات (ضمائر) وطريقة كتابتها
+              private val suffixes: List<Pair<String, String>> = listOf(
+                  Pair("كم", "kom"), Pair("هم", "hom"), Pair("ها", "ha"),
+                  Pair("ني", "ni"), Pair("نا", "na"), Pair("ك", "ak"), Pair("ه", "o")
               )
 
               private val repeatDelete = object : Runnable {
@@ -196,6 +430,134 @@ jobs:
                       doDelete()
                       handler.postDelayed(this, 60)
                   }
+              }
+
+              override fun onCreate() {
+                  super.onCreate()
+                  loadDict("words_default.txt")
+                  loadDict("words_user.txt")
+              }
+
+              override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+                  super.onStartInputView(info, restarting)
+                  resetWord()
+              }
+
+              private fun loadDict(name: String) {
+                  try {
+                      assets.open(name).bufferedReader(Charsets.UTF_8).useLines { lines ->
+                          for (line in lines) {
+                              val t = line.trim()
+                              if (t.isEmpty() || t.startsWith("#")) continue
+                              val idx = t.indexOf('=')
+                              if (idx <= 0) continue
+                              val key = normalize(t.substring(0, idx).trim())
+                              val value = t.substring(idx + 1).trim()
+                              if (key.isNotEmpty() && value.isNotEmpty()) dict[key] = value
+                          }
+                      }
+                  } catch (e: Exception) {
+                      // الملف مش موجود: عادي
+                  }
+              }
+
+              private fun normalize(s: String): String {
+                  val sb = StringBuilder()
+                  for (c in s) {
+                      when (c) {
+                          'أ', 'إ', 'آ' -> sb.append('ا')
+                          'ى' -> sb.append('ي')
+                          'ة' -> sb.append('ه')
+                          else -> sb.append(c)
+                      }
+                  }
+                  return sb.toString()
+              }
+
+              private fun convertWord(word: String): String {
+                  val hit = dict[normalize(word)]
+                  return hit ?: fallback(word)
+              }
+
+              // كلمة مش في القاموس: نفصل ال والنهايات، ونحط الحركات بالتخمين
+              private fun fallback(word: String): String {
+                  if (word.length > 3 && word.startsWith("ال")) {
+                      return "el" + convertWord(word.substring(2))
+                  }
+                  for (s in suffixes) {
+                      val minStem = if (s.first.length == 1) 3 else 2
+                      if (word.length >= s.first.length + minStem && word.endsWith(s.first)) {
+                          val stemWord = word.substring(0, word.length - s.first.length)
+                          val st = dict[normalize(stemWord)] ?: stem(stemWord)
+                          return st + s.second
+                      }
+                  }
+                  return stem(word)
+              }
+
+              private fun stem(word: String): String {
+                  val units = ArrayList<String>()
+                  val isCons = ArrayList<Boolean>()
+                  for ((i, c) in word.withIndex()) {
+                      when (c) {
+                          'ا', 'أ', 'إ', 'آ', 'ى', 'ة' -> {
+                              units.add("a")
+                              isCons.add(false)
+                          }
+                          'و' -> {
+                              units.add(if (i == 0) "w" else "o")
+                              isCons.add(i == 0)
+                          }
+                          'ي' -> {
+                              units.add(if (i == 0) "y" else "i")
+                              isCons.add(i == 0)
+                          }
+                          else -> {
+                              units.add(consonants[c] ?: c.toString())
+                              isCons.add(true)
+                          }
+                      }
+                  }
+                  var nC = 0
+                  var nV = 0
+                  for (k in units.indices) {
+                      if (isCons[k]) {
+                          nC++
+                      } else if (!(k == units.size - 1 && (word[k] == 'ة' || word[k] == 'ى'))) {
+                          nV++
+                      }
+                  }
+                  val sb = StringBuilder()
+                  var ci = 0
+                  for (k in units.indices) {
+                      sb.append(units[k])
+                      if (isCons[k]) {
+                          val nextIsCons = (k + 1 < units.size) && isCons[k + 1]
+                          if (nextIsCons) {
+                              if (nC == 4 && nV == 0) {
+                                  if (ci == 0 || ci == 2) sb.append("a")
+                              } else {
+                                  sb.append(if (ci == 0) "a" else "e")
+                              }
+                          }
+                          ci++
+                      }
+                  }
+                  return sb.toString()
+              }
+
+              private fun resetWord() {
+                  wordAr.setLength(0)
+                  wordFr = ""
+              }
+
+              private fun replaceWord(ic: InputConnection) {
+                  val newFr = convertWord(wordAr.toString())
+                  ic.beginBatchEdit()
+                  if (wordFr.isNotEmpty()) ic.deleteSurroundingText(wordFr.length, 0)
+                  ic.commitText(newFr, 1)
+                  ic.endBatchEdit()
+                  wordFr = newFr
               }
 
               private fun dp(v: Int): Int =
@@ -213,11 +575,11 @@ jobs:
                   // صف الأرقام
                   val numbers = newRow()
                   for (ch in "1234567890") {
-                      numbers.addView(makeKey(ch.toString(), 1f) { commit(ch.toString()) })
+                      numbers.addView(makeKey(ch.toString(), 1f) { commitOther(ch.toString()) })
                   }
                   root.addView(numbers)
 
-                  // صفوف الحروف (الترتيب من الشمال لليمين زي جبورد)
+                  // صفوف الحروف
                   val rows = listOf(
                       "ضصثقفغعهخحج",
                       "شسيبلاتنمكط",
@@ -257,9 +619,9 @@ jobs:
                       val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                       imm.showInputMethodPicker()
                   })
-                  bottom.addView(makeKey("،", 1f) { commit("،") })
-                  bottom.addView(makeKey("مسافة", 4f) { commit(" ") })
-                  bottom.addView(makeKey(".", 1f) { commit(".") })
+                  bottom.addView(makeKey("،", 1f) { commitOther("،") })
+                  bottom.addView(makeKey("مسافة", 4f) { commitOther(" ") })
+                  bottom.addView(makeKey(".", 1f) { commitOther(".") })
                   bottom.addView(makeKey("⏎", 1.5f, "#3F51B5") { doEnter() })
                   root.addView(bottom)
 
@@ -304,17 +666,30 @@ jobs:
                   return b
               }
 
-              private fun commit(text: String) {
+              // أي حاجة مش حرف (مسافة، رقم، نقطة): تنهي الكلمة الحالية
+              private fun commitOther(text: String) {
+                  resetWord()
                   currentInputConnection?.commitText(text, 1)
               }
 
               private fun typeLetter(ch: Char) {
-                  val out = if (francoOn) (franco[ch] ?: ch.toString()) else ch.toString()
-                  commit(out)
+                  val ic = currentInputConnection ?: return
+                  if (!francoOn) {
+                      resetWord()
+                      ic.commitText(ch.toString(), 1)
+                      return
+                  }
+                  if (wordFr.isNotEmpty()) {
+                      val before = ic.getTextBeforeCursor(wordFr.length, 0)?.toString() ?: ""
+                      if (before != wordFr) resetWord()
+                  }
+                  wordAr.append(ch)
+                  replaceWord(ic)
               }
 
               private fun toggleFranco() {
                   francoOn = !francoOn
+                  resetWord()
                   refreshToggle()
               }
 
@@ -332,12 +707,28 @@ jobs:
                   val selected = ic.getSelectedText(0)
                   if (selected != null && selected.isNotEmpty()) {
                       ic.commitText("", 1)
-                  } else {
-                      ic.deleteSurroundingText(1, 0)
+                      resetWord()
+                      return
                   }
+                  if (francoOn && wordAr.isNotEmpty() && wordFr.isNotEmpty()) {
+                      val before = ic.getTextBeforeCursor(wordFr.length, 0)?.toString() ?: ""
+                      if (before == wordFr) {
+                          wordAr.setLength(wordAr.length - 1)
+                          if (wordAr.isEmpty()) {
+                              ic.deleteSurroundingText(wordFr.length, 0)
+                              wordFr = ""
+                          } else {
+                              replaceWord(ic)
+                          }
+                          return
+                      }
+                  }
+                  resetWord()
+                  ic.deleteSurroundingText(1, 0)
               }
 
               private fun doEnter() {
+                  resetWord()
                   val ic = currentInputConnection ?: return
                   val options = currentInputEditorInfo?.imeOptions ?: 0
                   val action = options and EditorInfo.IME_MASK_ACTION
