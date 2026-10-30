@@ -25,7 +25,9 @@ jobs:
       - name: Unpack project
         run: |
           mkdir work
-          unzip -o project.zip -d work
+          for z in $(ls -1 *.zip | sort); do
+            unzip -o "$z" -d work
+          done
           if [ -f words.txt ]; then
             mkdir -p work/src/main/assets
             cp words.txt work/src/main/assets/words_user.txt
