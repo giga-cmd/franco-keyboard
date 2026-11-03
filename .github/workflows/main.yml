@@ -41,8 +41,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp work/build/outputs/apk/debug/*-debug.apk franco-keyboard.apk
+          cat > notes.md <<'NOTES_EOF'
+          Franco Keyboard
+
+          كيبورد فرانكو بمميزات وأدوات متعددة لتجربة كتابة سهلة وقابلة للتخصيص.
+          يمكنك تحويل كلامك من عربي الي فرانكو وعكس صحيح دون حاجه للخروج من الكيبورد
+          أبرز المميزات ✨
+
+          • كيبورد كامل متكامل.
+          • يوجد بداخله مايك يحول كلامك ل فرانكو.
+          • التصحيح التلقائي واقتراح الكلمات.
+          • التحويل من الفرانكو الي العربي.
+          • الترجمة الفورية.
+          • تخصيص شكل الكيبورد بالخلفيات والصور والفيديوهات.
+          • مع إمكانية تحميل ملفات الخطوط وتثبيتها داخل الكيبورد للحصول على تجربة شكل iPhone، دعم خطوط وإيموجي كيبورد الآيفون.
+
+          والمزيد من المميزات والأدوات الأخرى داخل التطبيق!
+
+          Developed by Giga
+          NOTES_EOF
           gh release create "v${{ github.run_number }}" franco-keyboard.apk \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
             --title "Franco Keyboard ${{ github.run_number }}" \
-            --notes "ملف APK جاهز للتثبيت"
+            --notes-file notes.md
