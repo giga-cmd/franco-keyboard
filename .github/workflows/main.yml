@@ -22,12 +22,17 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      - name: Unpack project
+      - name: Unpack latest Franco project only
         run: |
+          set -e
           mkdir work
-          for z in $(ls -1 *.zip | sort); do
-            unzip -o "$z" -d work
-          done
+          PROJECT_ZIP=$(find . -maxdepth 1 -type f -name 'FrancoKeyboard_v*.zip' -printf '%f\n' | sort -V | tail -n 1)
+          if [ -z "$PROJECT_ZIP" ]; then
+            echo "No FrancoKeyboard_v*.zip project found"
+            exit 1
+          fi
+          echo "Building project: $PROJECT_ZIP"
+          unzip -q "$PROJECT_ZIP" -d work
           if [ -f words.txt ]; then
             mkdir -p work/src/main/assets
             cp words.txt work/src/main/assets/words_user.txt
@@ -40,6 +45,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
           cp work/build/outputs/apk/debug/*-debug.apk franco-keyboard.apk
           cat > notes.md <<'NOTES_EOF'
           Franco Keyboard
