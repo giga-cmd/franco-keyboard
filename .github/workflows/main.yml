@@ -28,58 +28,90 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Unpack latest Franco project only
+      - name: Unpack latest projects (keyboard + translate engine)
         env:
           ZIP_PASS: ${{ secrets.ZIP_PASS }}
         run: |
           set -e
-          mkdir work
-          PROJECT_ZIP=$(find . -maxdepth 1 -type f \( -name 'FrancoKeyboard_v*.zip' -o -name 'FrancoKeyboard_v*.zip.enc' \) -printf '%f\n' | sort -V | tail -n 1)
-          if [ -z "$PROJECT_ZIP" ]; then
-            echo "No FrancoKeyboard_v* project found"
-            exit 1
-          fi
-          echo "Building project: $PROJECT_ZIP"
-          case "$PROJECT_ZIP" in
-            *.enc)
-              if [ -z "$ZIP_PASS" ]; then
-                echo "Secret ZIP_PASS is missing (Settings > Secrets and variables > Actions)"
-                exit 1
-              fi
-              openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:ZIP_PASS -in "$PROJECT_ZIP" -out project.zip || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
-              unzip -q project.zip -d work
-              rm -f project.zip
-              ;;
-            *)
-              unzip -q "$PROJECT_ZIP" -d work
-              ;;
-          esac
-          # لو الزيب اتعمل بفولدر واحد جواه، اطلع بمحتواه لمستوى work
-          if [ ! -f work/build.gradle.kts ]; then
-            INNER=$(find work -maxdepth 2 -name build.gradle.kts -printf '%h\n' | head -n 1)
-            if [ -n "$INNER" ]; then
-              shopt -s dotglob
-              mv "$INNER"/* work/
+          # unpack <prefix> <outdir>: بيفك أحدث ملف <prefix>_v*.zip أو .zip.enc جوه <outdir>
+          unpack() {
+            local PZ
+            PZ=$(find . -maxdepth 1 -type f \( -name "$1_v*.zip" -o -name "$1_v*.zip.enc" \) -printf '%f\n' | sort -V | tail -n 1)
+            if [ -z "$PZ" ]; then
+              return 1
             fi
-          fi
-          test -f work/build.gradle.kts || { echo "build.gradle.kts not found in zip"; exit 1; }
+            echo "Building project: $PZ"
+            mkdir -p "$2"
+            case "$PZ" in
+              *.enc)
+                if [ -z "$ZIP_PASS" ]; then
+                  echo "Secret ZIP_PASS is missing (Settings > Secrets and variables > Actions)"
+                  exit 1
+                fi
+                openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:ZIP_PASS -in "$PZ" -out "$2.zip" || { echo "Wrong ZIP_PASS or corrupt file: $PZ"; exit 1; }
+                unzip -q "$2.zip" -d "$2"
+                rm -f "$2.zip"
+                ;;
+              *)
+                unzip -q "$PZ" -d "$2"
+                ;;
+            esac
+            # لو الزيب اتعمل بفولدر واحد جواه، اطلع بمحتواه لمستوى الفولدر
+            if [ ! -f "$2/build.gradle.kts" ]; then
+              INNER=$(find "$2" -maxdepth 2 -name build.gradle.kts -printf '%h\n' | head -n 1)
+              if [ -n "$INNER" ]; then
+                shopt -s dotglob
+                mv "$INNER"/* "$2"/
+              fi
+            fi
+            test -f "$2/build.gradle.kts" || { echo "build.gradle.kts not found in $PZ"; exit 1; }
+          }
+
+          unpack FrancoKeyboard work || { echo "No FrancoKeyboard_v* project found"; exit 1; }
           test -f work/google-services.json || { echo "google-services.json missing in zip"; exit 1; }
           if [ -f words.txt ]; then
             mkdir -p work/src/main/assets
             cp words.txt work/src/main/assets/words_user.txt
           fi
+          # خطوطك وثيماتك (بتترجع تلقائيًا بعد أي تحديث): حطها في الريبو جوه فولدر seed
+          #   seed/fonts/*.ttf  و  seed/franco-backup.json
+          if [ -d seed/fonts ]; then
+            mkdir -p work/src/main/assets/seed_fonts
+            cp seed/fonts/* work/src/main/assets/seed_fonts/ 2>/dev/null || true
+          fi
+          if [ -f seed/franco-backup.json ]; then
+            mkdir -p work/src/main/assets
+            cp seed/franco-backup.json work/src/main/assets/seed_backup.json
+          fi
 
-      - name: Build APK
+          # تطبيق محرك الترجمة (اختياري: لو الملف موجود بيتبني)
+          if unpack FrancoTranslateEngine engine_work; then
+            echo "HAVE_ENGINE=1" >> "$GITHUB_ENV"
+          else
+            echo "No FrancoTranslateEngine_v* project found, skipping engine"
+          fi
+
+      - name: Build keyboard APK
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
           gradle -p work assembleDebug --no-daemon --stacktrace -PrunNumber=${{ github.run_number }}
 
-      - name: Publish APK
+      - name: Build translate engine APK
+        if: env.HAVE_ENGINE == '1'
+        run: |
+          gradle -p engine_work assembleDebug --no-daemon --stacktrace -PrunNumber=${{ github.run_number }}
+
+      - name: Publish APKs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
           cp work/build/outputs/apk/debug/*-debug.apk franco-keyboard.apk
+          FILES="franco-keyboard.apk"
+          if [ "$HAVE_ENGINE" = "1" ]; then
+            cp engine_work/build/outputs/apk/debug/*-debug.apk franco-translate-engine.apk
+            FILES="$FILES franco-translate-engine.apk"
+          fi
           gh release delete "v${{ github.run_number }}" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
           cat > notes.md <<'NOTES_EOF'
           Franco Keyboard
@@ -98,9 +130,11 @@ jobs:
 
           والمزيد من المميزات والأدوات الأخرى داخل التطبيق!
 
+          📥 للترجمة بدون نت: ثبّت franco-translate-engine.apk كمان (تطبيق منفصل) وحمّل منه اللغات.
+
           Developed by Giga
           NOTES_EOF
-          gh release create "v${{ github.run_number }}" franco-keyboard.apk \
+          gh release create "v${{ github.run_number }}" $FILES \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
             --title "Franco Keyboard ${{ github.run_number }}" \
