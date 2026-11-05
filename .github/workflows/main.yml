@@ -29,16 +29,31 @@ jobs:
           gradle-version: "8.10.2"
 
       - name: Unpack latest Franco project only
+        env:
+          ZIP_PASS: ${{ secrets.ZIP_PASS }}
         run: |
           set -e
           mkdir work
-          PROJECT_ZIP=$(find . -maxdepth 1 -type f -name 'FrancoKeyboard_v*.zip' -printf '%f\n' | sort -V | tail -n 1)
+          PROJECT_ZIP=$(find . -maxdepth 1 -type f \( -name 'FrancoKeyboard_v*.zip' -o -name 'FrancoKeyboard_v*.zip.enc' \) -printf '%f\n' | sort -V | tail -n 1)
           if [ -z "$PROJECT_ZIP" ]; then
-            echo "No FrancoKeyboard_v*.zip project found"
+            echo "No FrancoKeyboard_v* project found"
             exit 1
           fi
           echo "Building project: $PROJECT_ZIP"
-          unzip -q "$PROJECT_ZIP" -d work
+          case "$PROJECT_ZIP" in
+            *.enc)
+              if [ -z "$ZIP_PASS" ]; then
+                echo "Secret ZIP_PASS is missing (Settings > Secrets and variables > Actions)"
+                exit 1
+              fi
+              openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:ZIP_PASS -in "$PROJECT_ZIP" -out project.zip || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+              unzip -q project.zip -d work
+              rm -f project.zip
+              ;;
+            *)
+              unzip -q "$PROJECT_ZIP" -d work
+              ;;
+          esac
           # لو الزيب اتعمل بفولدر واحد جواه، اطلع بمحتواه لمستوى work
           if [ ! -f work/build.gradle.kts ]; then
             INNER=$(find work -maxdepth 2 -name build.gradle.kts -printf '%h\n' | head -n 1)
@@ -57,7 +72,7 @@ jobs:
       - name: Build APK
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
-          gradle -p work assembleDebug --no-daemon --stacktrace
+          gradle -p work assembleDebug --no-daemon --stacktrace -PrunNumber=${{ github.run_number }}
 
       - name: Publish APK
         env:
