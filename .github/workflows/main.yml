@@ -28,10 +28,9 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Build all Franco projects (keyboard + AI + translate engine)
+      - name: Build all Franco projects (keyboard + translate engine)
         env:
           ZIP_PASS: ${{ secrets.ZIP_PASS }}
-          GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
         run: |
           set -e
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
@@ -65,20 +64,11 @@ jobs:
                 mkdir -p "$W/src/main/assets"; cp words.txt "$W/src/main/assets/words_user.txt"
               fi
             fi
-            if [ "$PREFIX" = "FrancoAI" ]; then
-              mkdir -p "$W/src/main/assets"
-              if [ -n "$GEMINI_KEY" ]; then
-                printf '%s' "$GEMINI_KEY" > "$W/src/main/assets/ai_key.txt"
-              else
-                echo "WARNING: secret GEMINI_KEY is missing, AI will not work"
-              fi
-            fi
             gradle -p "$W" assembleDebug --no-daemon --stacktrace -PrunNumber=${{ github.run_number }}
             cp "$W"/build/outputs/apk/debug/*-debug.apk "out/$APK"
           }
 
           build_one FrancoKeyboard franco-keyboard.apk 1
-          build_one FrancoAI franco-ai.apk 0
           build_one FrancoTranslateEngine franco-translate-engine.apk 0
           ls -la out
 
@@ -107,7 +97,6 @@ jobs:
 
           الملفات في الإصدار:
           • franco-keyboard.apk : الكيبورد
-          • franco-ai.apk : الذكاء الاصطناعي (اختياري، بيشتغل من الكيبورد بس)
           • franco-translate-engine.apk : الترجمة بدون نت (اختياري)
 
           Developed by Giga
