@@ -91,6 +91,13 @@ jobs:
             echo "No FrancoTranslateEngine_v* project found, skipping engine"
           fi
 
+          # تطبيق Franco Data: مخزن دائم للخطوط والثيمات (اختياري)
+          if unpack FrancoData data_work; then
+            echo "HAVE_DATA=1" >> "$GITHUB_ENV"
+          else
+            echo "No FrancoData_v* project found, skipping data app"
+          fi
+
       - name: Build keyboard APK
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
@@ -100,6 +107,11 @@ jobs:
         if: env.HAVE_ENGINE == '1'
         run: |
           gradle -p engine_work assembleDebug --no-daemon --stacktrace -PrunNumber=${{ github.run_number }}
+
+      - name: Build Franco Data APK
+        if: env.HAVE_DATA == '1'
+        run: |
+          gradle -p data_work assembleDebug --no-daemon --stacktrace -PrunNumber=${{ github.run_number }}
 
       - name: Publish APKs
         env:
@@ -111,6 +123,10 @@ jobs:
           if [ "$HAVE_ENGINE" = "1" ]; then
             cp engine_work/build/outputs/apk/debug/*-debug.apk franco-translate-engine.apk
             FILES="$FILES franco-translate-engine.apk"
+          fi
+          if [ "$HAVE_DATA" = "1" ]; then
+            cp data_work/build/outputs/apk/debug/*-debug.apk franco-data.apk
+            FILES="$FILES franco-data.apk"
           fi
           gh release delete "v${{ github.run_number }}" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
           cat > notes.md <<'NOTES_EOF'
@@ -131,6 +147,7 @@ jobs:
           والمزيد من المميزات والأدوات الأخرى داخل التطبيق!
 
           📥 للترجمة بدون نت: ثبّت franco-translate-engine.apk كمان (تطبيق منفصل) وحمّل منه اللغات.
+          🗄 للخطوط والثيمات الدائمة: ثبّت franco-data.apk مرة واحدة وضيف فيه خطوطك.
 
           Developed by Giga
           NOTES_EOF
