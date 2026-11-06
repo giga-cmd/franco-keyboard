@@ -1,4 +1,4 @@
-name: Build Franco AI
+name: Build Franco Apps
 
 on:
   push:
@@ -28,70 +28,92 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Unpack latest Franco project only
+      - name: Build all Franco projects (keyboard + AI + translate engine)
         env:
           ZIP_PASS: ${{ secrets.ZIP_PASS }}
           GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
         run: |
           set -e
-          mkdir work
-          PROJECT_ZIP=$(find . -maxdepth 1 -type f \( -name 'FrancoAI_v*.zip' -o -name 'FrancoAI_v*.zip.enc' \) -printf '%f\n' | sort -V | tail -n 1)
-          if [ -z "$PROJECT_ZIP" ]; then
-            echo "No FrancoAI_v* project found"
-            exit 1
-          fi
-          echo "Building project: $PROJECT_ZIP"
-          case "$PROJECT_ZIP" in
-            *.enc)
-              if [ -z "$ZIP_PASS" ]; then
-                echo "Secret ZIP_PASS is missing (Settings > Secrets and variables > Actions)"
-                exit 1
-              fi
-              openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:ZIP_PASS -in "$PROJECT_ZIP" -out project.zip || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
-              unzip -q project.zip -d work
-              rm -f project.zip
-              ;;
-            *)
-              unzip -q "$PROJECT_ZIP" -d work
-              ;;
-          esac
-          # لو الزيب اتعمل بفولدر واحد جواه، اطلع بمحتواه لمستوى work
-          if [ ! -f work/build.gradle.kts ]; then
-            INNER=$(find work -maxdepth 2 -name build.gradle.kts -printf '%h\n' | head -n 1)
-            if [ -n "$INNER" ]; then
-              shopt -s dotglob
-              mv "$INNER"/* work/
-            fi
-          fi
-          test -f work/build.gradle.kts || { echo "build.gradle.kts not found in zip"; exit 1; }
-          mkdir -p work/src/main/assets
-          if [ -n "$GEMINI_KEY" ]; then
-            printf '%s' "$GEMINI_KEY" > work/src/main/assets/ai_key.txt
-          else
-            echo "WARNING: secret GEMINI_KEY is missing, AI will not work"
-          fi
-
-      - name: Build APK
-        run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
-          gradle -p work assembleDebug --no-daemon --stacktrace -PrunNumber=${{ github.run_number }}
+          mkdir -p out
 
-      - name: Publish APK
+          build_one() {
+            PREFIX="$1"; APK="$2"; REQUIRED="$3"
+            ZIP=$(find . -maxdepth 1 -type f \( -name "${PREFIX}_v*.zip" -o -name "${PREFIX}_v*.zip.enc" \) -printf '%f\n' | sort -V | tail -n 1)
+            if [ -z "$ZIP" ]; then
+              if [ "$REQUIRED" = "1" ]; then echo "No ${PREFIX}_v* project found"; exit 1; fi
+              echo "Skipping $PREFIX (no file)"; return 0
+            fi
+            echo "=== Building $ZIP ==="
+            W="work_$PREFIX"
+            rm -rf "$W"; mkdir "$W"
+            case "$ZIP" in
+              *.enc)
+                [ -n "$ZIP_PASS" ] || { echo "Secret ZIP_PASS is missing"; exit 1; }
+                openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:ZIP_PASS -in "$ZIP" -out "$W.zip" || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+                unzip -q "$W.zip" -d "$W"; rm -f "$W.zip" ;;
+              *) unzip -q "$ZIP" -d "$W" ;;
+            esac
+            if [ ! -f "$W/build.gradle.kts" ]; then
+              INNER=$(find "$W" -maxdepth 2 -name build.gradle.kts -printf '%h\n' | head -n 1)
+              if [ -n "$INNER" ]; then shopt -s dotglob; mv "$INNER"/* "$W"/; shopt -u dotglob; fi
+            fi
+            test -f "$W/build.gradle.kts" || { echo "build.gradle.kts not found in $ZIP"; exit 1; }
+            if [ "$PREFIX" = "FrancoKeyboard" ]; then
+              test -f "$W/google-services.json" || { echo "google-services.json missing"; exit 1; }
+              if [ -f words.txt ]; then
+                mkdir -p "$W/src/main/assets"; cp words.txt "$W/src/main/assets/words_user.txt"
+              fi
+            fi
+            if [ "$PREFIX" = "FrancoAI" ]; then
+              mkdir -p "$W/src/main/assets"
+              if [ -n "$GEMINI_KEY" ]; then
+                printf '%s' "$GEMINI_KEY" > "$W/src/main/assets/ai_key.txt"
+              else
+                echo "WARNING: secret GEMINI_KEY is missing, AI will not work"
+              fi
+            fi
+            gradle -p "$W" assembleDebug --no-daemon --stacktrace -PrunNumber=${{ github.run_number }}
+            cp "$W"/build/outputs/apk/debug/*-debug.apk "out/$APK"
+          }
+
+          build_one FrancoKeyboard franco-keyboard.apk 1
+          build_one FrancoAI franco-ai.apk 0
+          build_one FrancoTranslateEngine franco-translate-engine.apk 0
+          ls -la out
+
+      - name: Publish APKs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          cp work/build/outputs/apk/debug/*-debug.apk franco-ai.apk
           gh release delete "v${{ github.run_number }}" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
           cat > notes.md <<'NOTES_EOF'
-          Franco AI
+          Franco Keyboard
 
-          الذكاء الاصطناعي المرافق لكيبورد فرانكو. مش بيتفتح بإيدك: كيبورد فرانكو بيكلّمه (زر 🤖) للأسئلة بالنص والصوت والصور، وللترجمة الأدق.
+          كيبورد فرانكو بمميزات وأدوات متعددة لتجربة كتابة سهلة وقابلة للتخصيص.
+          يمكنك تحويل كلامك من عربي الي فرانكو وعكس صحيح دون حاجه للخروج من الكيبورد
+          أبرز المميزات ✨
+
+          • كيبورد كامل متكامل.
+          • يوجد بداخله مايك يحول كلامك ل فرانكو.
+          • التصحيح التلقائي واقتراح الكلمات.
+          • التحويل من الفرانكو الي العربي.
+          • الترجمة الفورية.
+          • تخصيص شكل الكيبورد بالخلفيات والصور والفيديوهات.
+          • مع إمكانية تحميل ملفات الخطوط وتثبيتها داخل الكيبورد للحصول على تجربة شكل iPhone، دعم خطوط وإيموجي كيبورد الآيفون.
+
+          والمزيد من المميزات والأدوات الأخرى داخل التطبيق!
+
+          الملفات في الإصدار:
+          • franco-keyboard.apk : الكيبورد
+          • franco-ai.apk : الذكاء الاصطناعي (اختياري، بيشتغل من الكيبورد بس)
+          • franco-translate-engine.apk : الترجمة بدون نت (اختياري)
 
           Developed by Giga
           NOTES_EOF
-          gh release create "v${{ github.run_number }}" franco-ai.apk \
+          gh release create "v${{ github.run_number }}" out/*.apk \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
-            --title "Franco AI ${{ github.run_number }}" \
+            --title "Franco Keyboard ${{ github.run_number }}" \
             --notes-file notes.md
