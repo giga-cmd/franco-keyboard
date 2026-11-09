@@ -49,7 +49,16 @@ jobs:
             case "$ZIP" in
               *.enc)
                 [ -n "$ZIP_PASS" ] || { echo "Secret ZIP_PASS is missing"; exit 1; }
-                openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:ZIP_PASS -in "$ZIP" -out "$W.zip" || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+                # فك تشفير بـ 7 طبقات (نفس ترتيب التشفير بالعكس)، كلها بنفس ZIP_PASS
+                cp "$ZIP" "$W.d6"
+                openssl enc -d -aes-256-ofb      -pbkdf2 -iter 400000 -md sha256 -pass env:ZIP_PASS -in "$W.d6" -out "$W.d5" || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+                openssl enc -d -aes-192-cbc      -pbkdf2 -iter 400000 -md sha512 -pass env:ZIP_PASS -in "$W.d5" -out "$W.d4" || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+                openssl enc -d -camellia-256-cbc -pbkdf2 -iter 400000 -md sha256 -pass env:ZIP_PASS -in "$W.d4" -out "$W.d3" || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+                openssl enc -d -aes-256-cfb      -pbkdf2 -iter 400000 -md sha512 -pass env:ZIP_PASS -in "$W.d3" -out "$W.d2" || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+                openssl enc -d -chacha20         -pbkdf2 -iter 400000 -md sha256 -pass env:ZIP_PASS -in "$W.d2" -out "$W.d1" || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+                openssl enc -d -aes-256-ctr      -pbkdf2 -iter 400000 -md sha512 -pass env:ZIP_PASS -in "$W.d1" -out "$W.d0" || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+                openssl enc -d -aes-256-cbc      -pbkdf2 -iter 400000 -md sha256 -pass env:ZIP_PASS -in "$W.d0" -out "$W.zip" || { echo "Wrong ZIP_PASS or corrupt file"; exit 1; }
+                rm -f "$W.d0" "$W.d1" "$W.d2" "$W.d3" "$W.d4" "$W.d5" "$W.d6"
                 unzip -q "$W.zip" -d "$W"; rm -f "$W.zip" ;;
               *) unzip -q "$ZIP" -d "$W" ;;
             esac
